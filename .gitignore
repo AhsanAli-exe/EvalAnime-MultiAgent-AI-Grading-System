@@ -1,0 +1,34 @@
+# secrets
+.env
+.env.local
+.env.*.local
+
+# python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.egg-info/
+
+# node / vite
+node_modules/
+.next/
+dist/
+.vite/
+
+# runtime data (all of it: runs, uploads, assignments, demo, sqlite db)
+data/
+
+# sqlite
+*.db
+*.sqlite
+*.sqlite3
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.log
+*.tmp
