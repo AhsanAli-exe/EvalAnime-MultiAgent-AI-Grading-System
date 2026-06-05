@@ -1,5 +1,5 @@
 import json
-from ..config import GEMINI_MODEL_FAST
+from ..config import CLAUDE_MODEL_FAST
 from ..storage import append_event
 from ..tools.email_tool import send_email
 from .base import simple_call
@@ -47,7 +47,7 @@ def report_all(run_id,grader_results,submissions_by_name,plag_result):
             agent=f"reporter[{student}]",
             system=SYSTEM,
             user=user,
-            model=GEMINI_MODEL_FAST,
+            model=CLAUDE_MODEL_FAST,
             max_output=300,
         )
         subject=f"Your grade for the assignment ({score}/{max_score})"

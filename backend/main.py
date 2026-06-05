@@ -6,7 +6,7 @@ from typing import List,Optional
 from fastapi import FastAPI,UploadFile,File,Form,HTTPException,BackgroundTasks,WebSocket,WebSocketDisconnect,Body
 from fastapi.middleware.cors import CORSMiddleware
 
-from .config import has_gemini
+from .config import has_anthropic
 from .db import init_db,insert_run,insert_submission,get_run,list_runs,list_submissions,list_events,list_results,update_result,delete_run
 from .storage import save_assignment_file,save_submission_file,append_event,read_summary,write_config,write_rubric,purge_run_files
 from .events_bus import publish
@@ -32,7 +32,7 @@ def on_startup():
 
 @app.get("/health")
 def health():
-    return {"ok":True,"gemini_key_loaded":has_gemini()}
+    return {"ok":True,"gemini_key_loaded":has_anthropic()}
 
 @app.post("/runs")
 async def create_run(

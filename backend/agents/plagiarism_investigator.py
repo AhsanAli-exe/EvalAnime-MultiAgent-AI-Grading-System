@@ -1,5 +1,5 @@
 import json
-from ..config import GEMINI_MODEL_FAST
+from ..config import CLAUDE_MODEL_FAST
 from ..storage import append_event
 from ..tools.similarity import compute_similarity
 from .base import simple_call
@@ -36,7 +36,7 @@ def investigate(run_id,grader_results,cosine_threshold=0.7,jaccard_threshold=0.2
             agent="plagiarism_investigator",
             system=SYSTEM,
             user=user,
-            model=GEMINI_MODEL_FAST,
+            model=CLAUDE_MODEL_FAST,
             max_output=180,
             want_json=True,
         )

@@ -1,5 +1,5 @@
 import json
-from ..config import GEMINI_MODEL_PRO
+from ..config import CLAUDE_MODEL_PRO
 from ..storage import append_event
 from .base import simple_call
 
@@ -67,7 +67,7 @@ def design_rubric(run_id,assignment_text,inspection,max_total=30):
         agent="rubric_designer",
         system=SYSTEM,
         user=user,
-        model=GEMINI_MODEL_PRO,
+        model=CLAUDE_MODEL_PRO,
         max_output=3000,
         want_json=True,
         thinking=True,

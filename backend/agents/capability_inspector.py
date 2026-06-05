@@ -1,4 +1,4 @@
-from ..config import GEMINI_MODEL_PRO
+from ..config import CLAUDE_MODEL_PRO,CLAUDE_MODEL_FAST
 from ..storage import append_event
 from .base import simple_call
 
@@ -24,7 +24,7 @@ def inspect_assignment(run_id,assignment_text):
         agent="capability_inspector",
         system=SYSTEM,
         user=user,
-        model=GEMINI_MODEL_PRO,
+        model=CLAUDE_MODEL_PRO,
         max_output=2500,
         want_json=True,
         thinking=True,
@@ -36,7 +36,7 @@ def inspect_assignment(run_id,assignment_text):
             agent="capability_inspector_fallback",
             system=SYSTEM,
             user=user,
-            model="gemini-2.5-flash",
+            model=CLAUDE_MODEL_FAST,
             max_output=1200,
             want_json=True,
             thinking=False,

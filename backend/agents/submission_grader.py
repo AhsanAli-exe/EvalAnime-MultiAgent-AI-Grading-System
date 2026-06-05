@@ -1,6 +1,6 @@
 import json
 from pypdf import PdfReader
-from ..config import GEMINI_MODEL_FAST
+from ..config import CLAUDE_MODEL_FAST
 from ..storage import append_event
 from ..tools.parsers import parse_any
 from ..tools.ocr import ocr_pdf_images
@@ -12,15 +12,17 @@ from ..validation import clamp_criterion_score,clamp
 SYSTEM=(
     "You are a strict but fair grader. You will be given an assignment, a rubric, "
     "and the path to one student submission. Format-compliance deductions are ALREADY "
-    "computed for you - do NOT add any format-related deductions yourself. "
-    "You MUST use the tools to: "
-    "(1) read the submission, "
-    "(2) for any 'visual' question call analyze_diagram with a clear yes/no question, "
-    "(3) then return ONLY JSON with the final grade. "
-    "JSON shape: {\"criteria_scores\":[{\"q_id\":\"Q1\",\"score\":N,\"max\":M,\"level\":\"good\",\"reason\":\"...\"}],"
-    "\"raw_total\":X,\"comments\":\"short paragraph for the student\"}. "
-    "raw_total = sum of criteria_scores. Keep reasons under 20 words. "
-    "Never invent text the submission does not have."
+    "computed for you - do NOT add any format-related deductions yourself.\n\n"
+    "Required workflow:\n"
+    "1. Call read_submission to get the student's text.\n"
+    "2. For any question the inspector marked 'visual', call analyze_diagram once.\n"
+    "3. Call submit_final_grade with the structured grade. This is REQUIRED to finish.\n\n"
+    "Rules:\n"
+    "- Use the EXACT q_id values from the rubric.\n"
+    "- score must be an integer between 0 and that criterion's max.\n"
+    "- level must be one of: excellent, good, weak, poor.\n"
+    "- Never invent text the submission does not have.\n"
+    "- raw_total must equal the sum of criteria_scores[].score values."
 )
 
 TOOL_DECLS=[
@@ -31,13 +33,40 @@ TOOL_DECLS=[
     },
     {
         "name":"analyze_diagram",
-        "description":"Ask Gemini multimodal whether the submission visually contains the answer to a diagram question. Use ONLY for 'visual' type questions identified by the inspector.",
+        "description":"Ask the multimodal model whether the submission visually contains the answer to a diagram question. Use ONLY for 'visual' type questions identified by the inspector.",
         "parameters":{
             "type":"object",
             "properties":{
                 "question":{"type":"string","description":"Short yes/no question, e.g. 'Does this submission contain a labelled perception-action loop diagram?'"}
             },
             "required":["question"],
+        },
+    },
+    {
+        "name":"submit_final_grade",
+        "description":"REQUIRED final step. Call this exactly once after you have read the submission (and analyzed any diagrams). Submits the structured grade. The loop ends after this is called.",
+        "parameters":{
+            "type":"object",
+            "properties":{
+                "criteria_scores":{
+                    "type":"array",
+                    "description":"One entry per rubric criterion. Each is an object with q_id, score, max, level, reason.",
+                    "items":{
+                        "type":"object",
+                        "properties":{
+                            "q_id":{"type":"string"},
+                            "score":{"type":"number","description":"awarded marks, 0..max"},
+                            "max":{"type":"number","description":"criterion max from rubric"},
+                            "level":{"type":"string","description":"one of excellent, good, weak, poor"},
+                            "reason":{"type":"string","description":"under 20 words"},
+                        },
+                        "required":["q_id","score","max","level","reason"],
+                    },
+                },
+                "raw_total":{"type":"number","description":"sum of criteria_scores.score values"},
+                "comments":{"type":"string","description":"short feedback paragraph for the student, under 80 words"},
+            },
+            "required":["criteria_scores","raw_total","comments"],
         },
     },
 ]
@@ -68,9 +97,13 @@ def _make_handlers(run_id,file_path,state):
         path=state.get("actual_path",file_path)
         r=analyze_visual(run_id,path,question,max_pages=1,max_output_tokens=120)
         return {"ok":r["ok"],"answer":r.get("answer","")[:300]}
+    def submit_final_grade(criteria_scores,raw_total,comments):
+        state["final_grade"]={"criteria_scores":criteria_scores,"raw_total":raw_total,"comments":comments}
+        return {"ok":True,"saved":True}
     return {
         "read_submission":read_submission,
         "analyze_diagram":analyze_diagram,
+        "submit_final_grade":submit_final_grade,
     }
 
 def _deterministic_format(run_id,file_path,max_total,filename_hint=""):
@@ -118,13 +151,13 @@ def grade_submission(run_id,submission,assignment_text,rubric,inspection):
         user=user,
         tool_decls=TOOL_DECLS,
         tool_handlers=handlers,
-        model=GEMINI_MODEL_FAST,
+        model=CLAUDE_MODEL_FAST,
         max_iters=6,
         max_output=1500,
-        thinking_budget=1024,
+        thinking_budget=0,
         temperature=0.0,
     )
-    data=_extract_json(text) or {}
+    data=state.get("final_grade") or _extract_json(text) or {}
     raw_crit=data.get("criteria_scores",[]) or []
     rubric_max_by_qid={c.get("q_id"):int(c.get("max",0) or 0) for c in rubric.get("criteria",[])}
     crit=[]

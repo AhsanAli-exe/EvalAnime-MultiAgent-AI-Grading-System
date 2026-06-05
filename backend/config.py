@@ -18,6 +18,10 @@ GEMINI_API_KEY=os.environ.get("GEMINI_API_KEY","")
 GEMINI_MODEL_FAST=os.environ.get("GEMINI_MODEL_FAST","gemini-2.5-flash")
 GEMINI_MODEL_PRO=os.environ.get("GEMINI_MODEL_PRO","gemini-2.5-pro")
 
+ANTHROPIC_API_KEY=os.environ.get("ANTHROPIC_API_KEY","")
+CLAUDE_MODEL_FAST=os.environ.get("CLAUDE_MODEL_FAST","claude-haiku-4-5")
+CLAUDE_MODEL_PRO=os.environ.get("CLAUDE_MODEL_PRO","claude-sonnet-4-6")
+
 SMTP_HOST=os.environ.get("SMTP_HOST","smtp.gmail.com")
 SMTP_PORT=int(os.environ.get("SMTP_PORT","587"))
 SMTP_USER=os.environ.get("SMTP_USER","")
@@ -26,6 +30,9 @@ EMAIL_DRY_RUN=os.environ.get("EMAIL_DRY_RUN","1")=="1"
 
 def has_gemini():
     return bool(GEMINI_API_KEY)
+
+def has_anthropic():
+    return bool(ANTHROPIC_API_KEY)
 
 def has_smtp():
     return bool(SMTP_USER) and bool(SMTP_APP_PASSWORD)
