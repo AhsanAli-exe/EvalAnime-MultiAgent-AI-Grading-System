@@ -67,6 +67,16 @@ export async function approveRun(runId){
   return r.json()
 }
 
+export async function deleteRun(runId){
+  const r=await fetch(`/runs/${runId}`,{method:"DELETE"})
+  if(!r.ok){
+    let msg="failed to delete run"
+    try{const j=await r.json(); if(j?.detail) msg=j.detail}catch{}
+    throw new Error(msg)
+  }
+  return r.json()
+}
+
 export function openRunSocket(runId,onMessage){
   const proto=location.protocol==="https:"?"wss:":"ws:"
   const ws=new WebSocket(`${proto}//${location.host}/ws/runs/${runId}`)

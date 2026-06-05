@@ -51,6 +51,9 @@ def run_team_grading(run_id):
     inspection=inspect_assignment(run_id,assignment_text)
 
     max_total=int(cfg.get("max_total") or 30)
+    stated=inspection.get("stated_max_marks")
+    if stated is not None and int(stated)!=max_total:
+        append_event(run_id,"max_marks_mismatch",{"teacher_set":max_total,"assignment_states":int(stated),"resolution":"teacher value used"})
     teacher_rubric=read_rubric(run_id)
     if teacher_rubric:
         append_event(run_id,"phase",{"name":"DESIGN_RUBRIC","skipped":True,"reason":"teacher_uploaded"})

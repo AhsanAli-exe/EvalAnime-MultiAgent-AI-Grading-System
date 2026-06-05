@@ -4,6 +4,16 @@ import {createRun,startRun} from "../api"
 const DEFAULTS={cosine:0.7,jaccard:0.2,minConf:0.75}
 const MAX_TOTAL_MIN=1
 const MAX_TOTAL_MAX=200
+const EMAIL_RE=/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/
+
+function emailStatus(value){
+  const v=(value||"").trim()
+  if(!v) return {ok:true,empty:true,msg:"will be saved (no email)"}
+  if(v.length<5||v.length>254) return {ok:false,msg:"length must be 5-254"}
+  if(v.includes(" ")) return {ok:false,msg:"no spaces allowed"}
+  if(!EMAIL_RE.test(v)) return {ok:false,msg:"not a valid email"}
+  return {ok:true,msg:"will be sent"}
+}
 
 export default function UploadForm({onCreated}){
   const [assignment,setAssignment]=useState(null)
@@ -37,7 +47,17 @@ export default function UploadForm({onCreated}){
     if(!Number.isFinite(mt)||mt<MAX_TOTAL_MIN||mt>MAX_TOTAL_MAX){
       return `total marks must be between ${MAX_TOTAL_MIN} and ${MAX_TOTAL_MAX}`
     }
+    for(let i=0;i<students.length;i++){
+      const s=emailStatus(students[i]?.email)
+      if(!s.ok) return `row ${i+1}: ${s.msg}`
+    }
     return ""
+  }
+
+  const emailStats={
+    sent:students.filter(s=>{const x=emailStatus(s?.email); return x.ok&&!x.empty}).length,
+    saved:students.filter(s=>{const x=emailStatus(s?.email); return x.ok&&x.empty}).length,
+    invalid:students.filter(s=>!emailStatus(s?.email).ok).length,
   }
 
   async function submit(e){
@@ -107,35 +127,61 @@ export default function UploadForm({onCreated}){
           className="text-sm text-gray-200"
         />
         {submissions.length>0 && (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="text-xs text-gray-400 uppercase">
-                <tr><th className="text-left p-1">File</th><th className="text-left p-1">Student name</th><th className="text-left p-1">Email</th></tr>
-              </thead>
-              <tbody>
-                {submissions.map((f,i)=>(
-                  <tr key={i} className="border-t border-gray-800">
-                    <td className="p-1 text-gray-300 font-mono text-xs">{f.name}</td>
-                    <td className="p-1">
-                      <input
-                        className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1 text-sm"
-                        value={students[i]?.name||""}
-                        onChange={(e)=>updateStudent(i,"name",e.target.value)}
-                      />
-                    </td>
-                    <td className="p-1">
-                      <input
-                        className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1 text-sm"
-                        placeholder="optional"
-                        value={students[i]?.email||""}
-                        onChange={(e)=>updateStudent(i,"email",e.target.value)}
-                      />
-                    </td>
+          <>
+            <div className="text-xs text-gray-400">
+              Enter each student's name and email. <span className="text-emerald-300">If you provide a valid email, the Reporter will send a real Gmail</span> after you Approve. Leave the email blank to save the feedback without sending.
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="text-xs text-gray-400 uppercase">
+                  <tr>
+                    <th className="text-left p-1">File</th>
+                    <th className="text-left p-1">Student name</th>
+                    <th className="text-left p-1">Email <span className="text-gray-500 normal-case">(for real delivery)</span></th>
+                    <th className="text-left p-1">Status</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {submissions.map((f,i)=>{
+                    const status=emailStatus(students[i]?.email)
+                    return (
+                      <tr key={i} className="border-t border-gray-800 align-top">
+                        <td className="p-1 text-gray-300 font-mono text-xs">{f.name}</td>
+                        <td className="p-1">
+                          <input
+                            className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1 text-sm"
+                            value={students[i]?.name||""}
+                            onChange={(e)=>updateStudent(i,"name",e.target.value)}
+                          />
+                        </td>
+                        <td className="p-1">
+                          <input
+                            type="email"
+                            className={"w-full bg-gray-800 border rounded px-2 py-1 text-sm "+(status.ok?"border-gray-700":"border-rose-500")}
+                            placeholder="student@example.com"
+                            value={students[i]?.email||""}
+                            onChange={(e)=>updateStudent(i,"email",e.target.value)}
+                          />
+                        </td>
+                        <td className="p-1 text-xs">
+                          {status.ok
+                            ? (status.empty
+                                ? <span className="text-amber-300">{status.msg}</span>
+                                : <span className="text-emerald-300">{status.msg}</span>)
+                            : <span className="text-rose-400">{status.msg}</span>}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <div className="text-xs text-gray-300 pt-2 border-t border-gray-800 flex flex-wrap gap-4">
+              <span><span className="text-emerald-300 font-medium">{emailStats.sent}</span> will be emailed</span>
+              <span><span className="text-amber-300 font-medium">{emailStats.saved}</span> will be saved only (no email)</span>
+              {emailStats.invalid>0 && <span><span className="text-rose-400 font-medium">{emailStats.invalid}</span> invalid (fix to submit)</span>}
+            </div>
+          </>
         )}
       </div>
 

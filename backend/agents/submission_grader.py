@@ -120,7 +120,9 @@ def grade_submission(run_id,submission,assignment_text,rubric,inspection):
         tool_handlers=handlers,
         model=GEMINI_MODEL_FAST,
         max_iters=6,
-        max_output=700,
+        max_output=1500,
+        thinking_budget=1024,
+        temperature=0.0,
     )
     data=_extract_json(text) or {}
     raw_crit=data.get("criteria_scores",[]) or []

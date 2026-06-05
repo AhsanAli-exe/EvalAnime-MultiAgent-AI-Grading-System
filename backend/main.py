@@ -7,13 +7,14 @@ from fastapi import FastAPI,UploadFile,File,Form,HTTPException,BackgroundTasks,W
 from fastapi.middleware.cors import CORSMiddleware
 
 from .config import has_gemini
-from .db import init_db,insert_run,insert_submission,get_run,list_runs,list_submissions,list_events,list_results,update_result
-from .storage import save_assignment_file,save_submission_file,append_event,read_summary,write_config,write_rubric
+from .db import init_db,insert_run,insert_submission,get_run,list_runs,list_submissions,list_events,list_results,update_result,delete_run
+from .storage import save_assignment_file,save_submission_file,append_event,read_summary,write_config,write_rubric,purge_run_files
+from .events_bus import publish
 from .agents.team import run_team_grading,run_team_report
 from .events_bus import subscribe,unsubscribe
 from .validation import (
     ValidationError,validate_max_total,clamp_threshold,
-    validate_score,validate_feedback,validate_rubric,
+    validate_score,validate_feedback,validate_rubric,validate_email,
 )
 
 app=FastAPI(title="Evalanime API")
@@ -83,9 +84,17 @@ async def create_run(
             raise HTTPException(status_code=400,detail=f"rubric: {e}")
 
     names=[n.strip() for n in student_names.split(",")] if student_names else []
-    emails=[e.strip() for e in student_emails.split(",")] if student_emails else []
+    raw_emails=[e.strip() for e in student_emails.split(",")] if student_emails else []
+
+    clean_emails=[]
+    for i,raw in enumerate(raw_emails):
+        try:
+            clean_emails.append(validate_email(raw,field=f"email[{i+1}]",allow_empty=True))
+        except ValidationError as e:
+            raise HTTPException(status_code=400,detail=str(e))
 
     sub_ids=[]
+    sent_count=0
     for i,sub in enumerate(submissions):
         sub_id=uuid.uuid4().hex[:10]
         data=await sub.read()
@@ -94,15 +103,17 @@ async def create_run(
             continue
         path=save_submission_file(run_id,sub_id,sub.filename,data)
         name=names[i] if i<len(names) else f"Student {i+1}"
-        email=emails[i] if i<len(emails) else ""
+        email=clean_emails[i] if i<len(clean_emails) else ""
+        if email:
+            sent_count+=1
         insert_submission(sub_id,run_id,name,email,sub.filename,path)
-        append_event(run_id,"submission_added",{"sub_id":sub_id,"student":name,"file":sub.filename})
+        append_event(run_id,"submission_added",{"sub_id":sub_id,"student":name,"file":sub.filename,"has_email":bool(email)})
         sub_ids.append(sub_id)
 
     if not sub_ids:
         raise HTTPException(status_code=400,detail="all submission files were empty")
 
-    return {"run_id":run_id,"submission_ids":sub_ids,"config":cfg,"rubric_uploaded":rubric_uploaded}
+    return {"run_id":run_id,"submission_ids":sub_ids,"config":cfg,"rubric_uploaded":rubric_uploaded,"emails_provided":sent_count}
 
 @app.get("/runs")
 def get_runs():
@@ -181,6 +192,18 @@ def patch_result(run_id:str,submission_id:str,patch:dict=Body(...)):
         "max_total":max_total,
     })
     return {"ok":True,"changed":changed,"score":clean_score,"max_total":max_total}
+
+@app.delete("/runs/{run_id}")
+def remove_run(run_id:str):
+    run=get_run(run_id)
+    if not run:
+        raise HTTPException(status_code=404,detail="run not found")
+    if run["status"] in ("running","running_emails"):
+        raise HTTPException(status_code=400,detail=f"cannot delete a run while status={run['status']}")
+    publish(run_id,{"kind":"run_deleted","payload":{"run_id":run_id}})
+    delete_run(run_id)
+    purge_run_files(run_id)
+    return {"ok":True,"run_id":run_id}
 
 @app.post("/runs/{run_id}/approve")
 def approve_run(run_id:str,background:BackgroundTasks):

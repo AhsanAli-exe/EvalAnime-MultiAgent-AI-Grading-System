@@ -27,6 +27,18 @@ def review_items(run_id,summary,policy=None):
     pol=policy or POLICY
     items=[]
 
+    inspection=summary.get("inspection",{}) or {}
+    stated=inspection.get("stated_max_marks")
+    teacher_set=int((summary.get("config") or {}).get("max_total") or 0)
+    if stated is not None and teacher_set and int(stated)!=teacher_set:
+        items.append({
+            "kind":"max_marks_mismatch",
+            "severity":"medium",
+            "reason":f"assignment document states {int(stated)} marks but teacher set {teacher_set}. Scores were computed out of {teacher_set}.",
+            "stated":int(stated),
+            "teacher_set":teacher_set,
+        })
+
     rubric=summary.get("rubric",{}) or {}
     crit=rubric.get("criteria",[]) or []
     if len(crit)<pol["min_rubric_criteria"]:

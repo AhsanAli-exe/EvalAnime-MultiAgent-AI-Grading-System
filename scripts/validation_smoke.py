@@ -6,7 +6,7 @@ sys.path.insert(0,str(Path(__file__).resolve().parent.parent))
 from backend.validation import (
     ValidationError,validate_max_total,clamp_threshold,
     validate_score,validate_feedback,validate_rubric,
-    clamp_criterion_score,
+    clamp_criterion_score,validate_email,
 )
 from backend.agents.rubric_designer import _normalize
 
@@ -70,6 +70,21 @@ def main():
     expect_ok("empty string",lambda:validate_feedback(""))
     expect_raises("non-string",lambda:validate_feedback({"a":1}))
     expect_raises("too long",lambda:validate_feedback("x"*5000))
+
+    section("validate_email")
+    expect_ok("normal email",lambda:validate_email("ahsan@nu.edu.pk"))
+    expect_ok("gmail",lambda:validate_email("ahsanal2072@gmail.com"))
+    expect_ok("with dots and plus",lambda:validate_email("first.last+tag@sub.example.co.uk"))
+    expect_ok("empty allowed",lambda:validate_email("",allow_empty=True))
+    expect_ok("whitespace trimmed",lambda:validate_email("  ok@x.com  "))
+    expect_raises("empty when not allowed",lambda:validate_email("",allow_empty=False))
+    expect_raises("no @",lambda:validate_email("ahsanal2072gmail.com"))
+    expect_raises("double @",lambda:validate_email("a@@b.com"))
+    expect_raises("space inside",lambda:validate_email("a b@x.com"))
+    expect_raises("no TLD",lambda:validate_email("a@localhost"))
+    expect_raises("too short",lambda:validate_email("a@b"))
+    expect_raises("non-string",lambda:validate_email({"a":1}))
+    expect_raises("over 254 chars",lambda:validate_email("x"*250+"@x.com"))
 
     section("validate_rubric")
     good={"max_total":30,"criteria":[{"q_id":"Q1","max":10},{"q_id":"Q2","max":20}]}

@@ -84,7 +84,7 @@ def simple_call(run_id,agent,system,user,model=None,max_output=400,want_json=Fal
     model=model or GEMINI_MODEL_FAST
     fb=_fallback_for(model)
     append_event(run_id,"llm_call",{"agent":agent,"model":model,"prompt_chars":len(user),"want_json":want_json,"fallback":fb})
-    cfg_kwargs={"max_output_tokens":max_output,"temperature":0.2,"system_instruction":system}
+    cfg_kwargs={"max_output_tokens":max_output,"temperature":0.0,"system_instruction":system}
     if not thinking:
         cfg_kwargs["thinking_config"]=gtypes.ThinkingConfig(thinking_budget=0)
     if want_json:
@@ -98,20 +98,20 @@ def simple_call(run_id,agent,system,user,model=None,max_output=400,want_json=Fal
         return _extract_json(text) or {}
     return text
 
-def tool_loop(run_id,agent,system,user,tool_decls,tool_handlers,model=None,max_iters=6,max_output=500):
+def tool_loop(run_id,agent,system,user,tool_decls,tool_handlers,model=None,max_iters=6,max_output=500,thinking_budget=0,temperature=0.0):
     model=model or GEMINI_MODEL_FAST
     tools=[gtypes.Tool(function_declarations=tool_decls)]
-    append_event(run_id,"agent_start",{"agent":agent,"model":model,"tools":[d["name"] for d in tool_decls]})
+    append_event(run_id,"agent_start",{"agent":agent,"model":model,"tools":[d["name"] for d in tool_decls],"thinking_budget":thinking_budget,"temperature":temperature})
 
     contents=[gtypes.Content(role="user",parts=[gtypes.Part(text=user)])]
     final_text=""
     for step in range(max_iters):
         cfg=gtypes.GenerateContentConfig(
             max_output_tokens=max_output,
-            temperature=0.1,
+            temperature=temperature,
             system_instruction=system,
             tools=tools,
-            thinking_config=gtypes.ThinkingConfig(thinking_budget=0),
+            thinking_config=gtypes.ThinkingConfig(thinking_budget=thinking_budget),
         )
         resp=_generate_with_retry(run_id,agent,model,contents,cfg,fallback_model=_fallback_for(model))
         _log_usage(run_id,agent,model,resp)

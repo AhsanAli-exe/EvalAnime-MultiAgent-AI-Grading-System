@@ -1,8 +1,13 @@
 import math
+import re
 
 MAX_TOTAL_MIN=1
 MAX_TOTAL_MAX=200
 FEEDBACK_MAX_CHARS=4000
+
+EMAIL_MIN_LEN=5
+EMAIL_MAX_LEN=254
+EMAIL_RE=re.compile(r"^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}$")
 
 class ValidationError(ValueError):
     def __init__(self,field,message):
@@ -47,6 +52,28 @@ def validate_score(value,max_total):
     if f>max_total:
         raise ValidationError("score",f"cannot exceed max_total ({max_total})")
     return f
+
+def validate_email(value,field="email",allow_empty=True):
+    if value is None or value=="":
+        if allow_empty:
+            return ""
+        raise ValidationError(field,"is required")
+    if not isinstance(value,str):
+        raise ValidationError(field,"must be a string")
+    v=value.strip()
+    if not v:
+        if allow_empty:
+            return ""
+        raise ValidationError(field,"is required")
+    if len(v)<EMAIL_MIN_LEN or len(v)>EMAIL_MAX_LEN:
+        raise ValidationError(field,f"length must be between {EMAIL_MIN_LEN} and {EMAIL_MAX_LEN}")
+    if " " in v:
+        raise ValidationError(field,"cannot contain spaces")
+    if v.count("@")!=1:
+        raise ValidationError(field,"must contain exactly one '@'")
+    if not EMAIL_RE.match(v):
+        raise ValidationError(field,f"'{v}' is not a valid email address")
+    return v
 
 def validate_feedback(value):
     if value is None:

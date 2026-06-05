@@ -85,6 +85,12 @@ def clear_run_dir(run_id):
     if p.exists():
         shutil.rmtree(p)
 
+def purge_run_files(run_id):
+    for base in (RUNS_DIR,UPLOADS_DIR,ASSIGNMENTS_DIR):
+        p=base/run_id
+        if p.exists():
+            shutil.rmtree(p,ignore_errors=True)
+
 
 # end of code:
 # comments:

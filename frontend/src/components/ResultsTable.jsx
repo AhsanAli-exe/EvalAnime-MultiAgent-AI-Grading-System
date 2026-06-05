@@ -55,6 +55,7 @@ const FEEDBACK_MAX=4000
 
 function ResultRow({runId,submission,result,editable,onChanged}){
   const [editing,setEditing]=useState(false)
+  const [showFull,setShowFull]=useState(false)
   const [score,setScore]=useState(result?.score??0)
   const [feedback,setFeedback]=useState(result?.feedback||"")
   const [saving,setSaving]=useState(false)
@@ -147,7 +148,18 @@ function ResultRow({runId,submission,result,editable,onChanged}){
         {result ? <span className="text-emerald-300">{result.score}/{result.max_score}</span> : <span className="text-gray-500">…</span>}
       </td>
       <td className="p-1 text-xs text-gray-300 align-top max-w-md">
-        {result?.feedback ? <div className="line-clamp-3">{result.feedback}</div> : <span className="text-gray-600">—</span>}
+        {result?.feedback ? (
+          <>
+            <div className={showFull?"whitespace-pre-wrap":"line-clamp-3"}>{result.feedback}</div>
+            {result.feedback.length>140 && (
+              <button
+                type="button"
+                onClick={()=>setShowFull(s=>!s)}
+                className="text-[10px] mt-1 text-emerald-300 hover:text-emerald-200 underline"
+              >{showFull?"show less":"show more"}</button>
+            )}
+          </>
+        ) : <span className="text-gray-600">—</span>}
       </td>
       <td className="p-1 text-xs text-rose-300 align-top">
         {(result?.breakdown?.deductions||[]).map((d,i)=>(

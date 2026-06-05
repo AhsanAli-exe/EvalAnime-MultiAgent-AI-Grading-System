@@ -1,5 +1,5 @@
 import {useEffect,useState} from "react"
-import {getHealth,listRuns} from "./api"
+import {getHealth,listRuns,deleteRun} from "./api"
 import UploadForm from "./components/UploadForm"
 import Dashboard from "./components/Dashboard"
 import "./App.css"
@@ -44,15 +44,31 @@ function App(){
           <div className="text-xs text-gray-500 uppercase tracking-wide mb-2 px-1">Recent runs</div>
           <ul className="space-y-1">
             {runs.map(r=>(
-              <li key={r.id}>
+              <li key={r.id} className={"group relative rounded "+(selectedRunId===r.id?"bg-gray-800":"hover:bg-gray-800/60")}>
                 <button
-                  className={"w-full text-left px-2 py-2 rounded text-sm hover:bg-gray-800 "+(selectedRunId===r.id?"bg-gray-800":"")}
+                  className="w-full text-left pr-7 px-2 py-2 text-sm"
                   onClick={()=>setSelectedRunId(r.id)}
                 >
                   <div className="font-mono text-xs text-gray-400">{r.id}</div>
                   <div className="truncate text-white">{r.assignment_name}</div>
                   <div className="text-xs"><StatusPill s={r.status}/></div>
                 </button>
+                <button
+                  type="button"
+                  title="Delete run"
+                  className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 text-gray-400 hover:text-rose-300 text-xs px-1 py-0.5 rounded hover:bg-gray-900"
+                  onClick={async(e)=>{
+                    e.stopPropagation()
+                    const busy=r.status==="running"||r.status==="running_emails"
+                    if(busy){alert(`Cannot delete while status is "${r.status}"`); return}
+                    if(!confirm(`Delete run ${r.id}? This removes the run, its events, results and uploaded files. Cannot be undone.`)) return
+                    try{
+                      await deleteRun(r.id)
+                      if(selectedRunId===r.id) setSelectedRunId(null)
+                      refreshRuns()
+                    }catch(err){alert(String(err.message||err))}
+                  }}
+                >🗑</button>
               </li>
             ))}
             {runs.length===0 && <li className="text-xs text-gray-500 px-1">no runs yet</li>}

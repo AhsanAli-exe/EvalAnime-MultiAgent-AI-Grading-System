@@ -145,6 +145,18 @@ def insert_result(run_id,submission_id,score,max_score,breakdown,feedback):
     conn.commit()
     conn.close()
 
+def delete_run(run_id):
+    conn=get_conn()
+    c=conn.cursor()
+    c.execute("DELETE FROM events WHERE run_id=?",(run_id,))
+    c.execute("DELETE FROM results WHERE run_id=?",(run_id,))
+    c.execute("DELETE FROM submissions WHERE run_id=?",(run_id,))
+    c.execute("DELETE FROM runs WHERE id=?",(run_id,))
+    changed=c.rowcount>0
+    conn.commit()
+    conn.close()
+    return changed
+
 def update_result(run_id,submission_id,score=None,feedback=None,breakdown=None):
     conn=get_conn()
     c=conn.cursor()

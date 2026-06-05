@@ -85,6 +85,8 @@ export default function Dashboard({runId}){
 
       <PhaseTracker phases={phases}/>
 
+      <MismatchBanner summary={summary}/>
+
       {run?.status==="awaiting_approval" && (
         <div className="bg-amber-900/40 border border-amber-700 rounded p-3 text-sm text-amber-100">
           Grading is complete. Review the results below; click <b>Edit</b> on any row to override a score
@@ -106,6 +108,25 @@ export default function Dashboard({runId}){
   )
 }
 
+
+function MismatchBanner({summary}){
+  const items=summary?.governance?.review_items||[]
+  const m=items.find(it=>it?.kind==="max_marks_mismatch")
+  if(!m) return null
+  return (
+    <div className="bg-rose-900/40 border border-rose-600 rounded p-3 text-sm text-rose-100 flex gap-3 items-start">
+      <span className="text-lg leading-none">⚠</span>
+      <div>
+        <div className="font-medium">Total marks mismatch</div>
+        <div className="text-xs mt-1">
+          The assignment document states <b>{m.stated} marks</b> but you set the total to <b>{m.teacher_set}</b>.
+          Scores were computed out of <b>{m.teacher_set}</b>.
+          If that was a typo, create a new run with total marks set to {m.stated}.
+        </div>
+      </div>
+    </div>
+  )
+}
 
 function StatusBadge({status}){
   if(!status) return null
